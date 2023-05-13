@@ -1,0 +1,2 @@
+data,stato,ricoverati_con_sintomi,terapia_intensiva,totale_ospedalizzati,isolamento_domiciliare,totale_positivi,variazione_totale_positivi,nuovi_positivi,dimessi_guariti,deceduti,casi_da_sospetto_diagnostico,casi_da_screening,totale_casi,tamponi,casi_testati,note,ingressi_terapia_intensiva,note_test,note_casi,totale_positivi_test_molecolare,totale_positivi_test_antigenico_rapido,tamponi_test_molecolare,tamponi_test_antigenico_rapido
+2021-09-16T17:00:00,ITA,4018,531,4549,111793,116342,-2145,5117,4376646,130167,,,4623155,88516407,33481704,,30,,,4454844,168311,58745788,29770619

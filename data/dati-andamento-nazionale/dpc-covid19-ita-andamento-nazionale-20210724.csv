@@ -1,0 +1,2 @@
+data,stato,ricoverati_con_sintomi,terapia_intensiva,totale_ospedalizzati,isolamento_domiciliare,totale_positivi,variazione_totale_positivi,nuovi_positivi,dimessi_guariti,deceduti,casi_da_sospetto_diagnostico,casi_da_screening,totale_casi,tamponi,casi_testati,note,ingressi_terapia_intensiva,note_test,note_casi,totale_positivi_test_molecolare,totale_positivi_test_antigenico_rapido,tamponi_test_molecolare,tamponi_test_antigenico_rapido
+2021-07-24T17:00:00,ITA,1340,172,1512,61011,62523,3771,5140,4122208,127942,,,4312673,76051796,30606618,,21,,,4157876,154797,53838808,22212988
