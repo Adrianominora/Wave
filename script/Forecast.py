@@ -41,14 +41,14 @@ def make_forecast(new_pos, params, max_nfev=10000):
     fmodel= Model(gompertz)
 
     # fit the model
-    result = fmodel.fit(data, params, t=tt-t0-7, max_nfev=max_nfev)
+    result = fmodel.fit(data, params, t=tt-t0, max_nfev=max_nfev)
     sigma = result.eval_uncertainty()
-    fit = norm_factor*gompertz(tt_forecast-t0, result.params['K'].value, result.params['b'].value, result.params['c'].value)
+    fit = norm_factor*gompertz(tt_forecast-t0+3.5, result.params['K'].value, result.params['b'].value, result.params['c'].value)
     forecast = fit[today+1]
     return fit, result.params, forecast
 
-def compute_rt(new_pos, window_size=14):
-    data = new_pos[-(window_size+1):-1]
+def compute_rt(func, window_size=14):
+    data = func[-(window_size+1):-1]
     log_data = np.log(data)
     rt = np.zeros((log_data.shape[0]-1,))
     for i in range(rt.shape[0]):
@@ -58,7 +58,8 @@ def compute_rt(new_pos, window_size=14):
 def rolling_avg(new_pos, window_size=7):
     new_pos_avg=np.empty(new_pos.shape)
     for i in range(window_size):
-        weight = np.arange(1,i+1)
+        weight = np.arange(1,i+2)
+        weight=weight/np.linalg.norm(weight)
         new_pos_avg[i]=np.mean(new_pos[:i+1])
 
     weight = np.arange(1,window_size+1)
@@ -92,8 +93,9 @@ def compute_derr(new_pos, new_pos_avg, shift_day=1):
         err_pred = np.mean(data)
     return err_pred
 
-def copute_conc(new_pos, new_pos_avg, window_size=14):
-    data = new_pos[-(window_size+1):-1]
+def copute_conc(func, window_size=14):
+    norm_factor=np.amax(func)
+    data = func[-(window_size+1):-1]/norm_factor
     dif = np.zeros((data.shape[0]-1,))
     concv = np.zeros((dif.shape[0]-1,))
     for i in range(dif.shape[0]):
@@ -102,3 +104,53 @@ def copute_conc(new_pos, new_pos_avg, window_size=14):
         concv[i] = dif[i+1]-dif[i]
     return np.mean(concv)
 
+# Single wave fit
+class wave_fit():
+    def __init__((t0,T_tot),new_pos_tot) :
+        self.param_list=[]
+        self.forecast_list=[]
+        self.corrected_forecast_list=[]
+        self.rt_list=[]
+        self.conc_list=[]
+        self.t0=t0
+        self.T_tot=T_tot
+        
+
+
+#def wave_fit((t0,T_tot),new_pos_tot):
+    param_list=[]
+    forecast_list=[]
+    corrected_forecast_list=[]
+    rt_list=[]
+    conc_list=[]
+    for t in range(t0+14,T_tot):
+        new_pos = new_pos_tot[t0:t]  # Data acquisition
+        new_pos_avg = rolling_avg(new_pos)
+
+        daily_err = compute_derr(new_pos,new_pos_avg)
+        # daily_err = np.load('../data/daily_errors.npy')[(t+1-3)%7]
+
+        # Compute rt
+        rt_list.append(compute_rt(new_pos_avg))
+
+        # Compute concavity
+        conc_list.append(copute_conc(new_pos_avg))
+
+        # Correct correction
+        if t>t0+24:
+            daily_err += 75*conc_list[-1]
+        
+        # Define parameters
+        if t==t0+14:
+            params = make_param_0()
+        else:
+            params=result_params
+        
+        fit, result_params, forecast = make_forecast(new_pos_avg, params)
+        
+        # Saving parameters and forecast
+        param_list.append([result_params['K'].value, result_params['b'].value, result_params['c'].value])
+        forecast_list.append(forecast)
+        corrected_forecast_list.append(forecast*(1+daily_err))
+
+        return
