@@ -1,8 +1,5 @@
 from lmfit import Model, Parameters
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import pandas as pd
 
 # Sinusoidal function
 def sin_wave(t, A, T, c):
@@ -19,9 +16,9 @@ def cum_gompertz(t, K, b, c):
 
 def make_param_0():
     params = Parameters()
-    params.add(f"K", 10, min=0, max=100)
-    params.add(f"b", 1, min=1e-2, max=100)
-    params.add(f"c", 1, min=1e-6, max=2)
+    params.add("K", 10, min=0, max=100)
+    params.add("b", 1, min=1e-2, max=100)
+    params.add("c", 1, min=1e-6, max=2)
     #params.add(f"d", 0, min=0)
 
     return params
@@ -83,7 +80,7 @@ def copute_conc(func, window_size=14):
         concv[i] = dif[i+1]-dif[i]
     return np.mean(concv)
 
-def compute_start(new_pos, window_size=7):
+def compute_start(new_pos, window_size=7, start_0=14):
     tt=np.arange(0,new_pos.shape[0])
     rt = np.zeros(new_pos.shape)
     new_pos_fit=np.zeros(new_pos.shape)
@@ -94,7 +91,7 @@ def compute_start(new_pos, window_size=7):
     for t in range(window_size,tt[-1]):
         rt[t] = compute_rt(new_pos_fit[0:t],window_size)
 
-    t_start = [0]
+    t_start = [start_0]
     t_end = [50]
     t=0
     while t<tt[-1]:
@@ -108,147 +105,91 @@ def compute_start(new_pos, window_size=7):
 
 # Single wave fit
 class wave_fit:
-    def __init__(self, new_pos_tot, params = None) :
-        if param == None:
-            self.params = make_params_0()
-        else:
-            self.params = params
+    norm_factor = 1
+    params = make_param_0()
+    # def __init__(self) :
+        # if params == None:
+        #     self.params = Parameters()
+        #     self.params = make_param_0()
+        # else:
+        #     self.params = Parameters()
+        #     self.params = params
+        
 
-        self.new_pos_tot=new_pos_tot
-        self.norm_factor = np.amax(new_pos_tot)
+    # def make_param_0(self):
+    #     self.params.add(f"K", 10, min=0, max=100)
+    #     self.params.add(f"b", 1, min=1e-2, max=100)
+    #     self.params.add(f"c", 1, min=1e-6, max=2)
+    #     #params.add(f"d", 0, min=0)
 
-    def make_forecast(new_pos, params, T = 14,max_nfev=10000):
-        t0 = 0
-        today = new_pos.shape[0]
-        cum_pos = np.cumsum(new_pos)
-        norm_factor = np.amax(new_pos)
-        data = new_pos/norm_factor # Normalization
-        cum_data = np.cumsum(data)
-        d0 = cum_data[0]
-        tt=np.arange(t0,today)
-        tt_forecast=np.arange(t0,today+T)
-
-        # Create model
-        fmodel= Model(gompertz)
-
-        # fit the model
-        result = fmodel.fit(data, params, t=tt-t0, max_nfev=max_nfev)
-        sigma = result.eval_uncertainty()
-        fit = norm_factor*gompertz(tt_forecast-t0+3.5, result.params['K'].value, result.params['b'].value, result.params['c'].value)
-        forecast = fit[today+1]
-        return fit, result.params, forecast
+    # def set_norm_factor(self, nf):
+    #     self.norm_factor(nf)
     
     def predict(self, tt):
-        prediction = self.norm_factor*gompertz(tt, self.param_list[-1]['K'].value, self.param_list[-1]['b'].value, self.param_list[-1]['c'].value)
-
+        prediction = self.norm_factor*gompertz(tt, self.params['K'].value, self.params['b'].value, self.params['c'].value)
         return prediction
         
-    def fit(self,conc_flag, max_nfev = 1000) :
+    def fit(self, new_pos, max_nfev = 1000) :
+        self.norm_factor = np.amax(new_pos)
         t0=0
-        T_tot = new_pos_tot.shape[0]
+        T_tot = new_pos.shape[0]
         if not(T_tot>t0):
             print('Final time has to be greater than initial time')
             raise
-    
-        new_pos = self.new_pos_tot[t0-14:t]  # Data acquisition
-        self.new_pos_avg = rolling_avg(new_pos)
-
-        
-        
+        new_pos_avg = rolling_avg(new_pos)
         # Create model
         fmodel= Model(gompertz)
         # fit the model
-        result = fmodel.fit(self.new_pos_tot/self.norm_factor, self.params, 
+        result = fmodel.fit(new_pos/self.norm_factor, self.params, 
                             t=np.arange(t0,T_tot), max_nfev=max_nfev)
-
         # Update
         self.params = result.params
 
-    def set_params(params):
+    def set_params(self, params):
         self.params=params
-        
-    @ property
-    def param_list(self):
-        return self.param_list
-    
-    @ property
-    def forecast_list(self):
-        return self.forecast_list
-    
-    @ property
-    def corrected_forecast_list(self):
-        return self.corrected_forecast_list
-    
-    @ property
-    def conc_list(self):
-        return self.conc_list
-    
-    @ property
-    def fit_list(self):
-        return self.fit_list
-    
-    @ property
-    def new_pos_avg(self):
-        return self.new_pos_avg
-    
-    @ property
-    def norm_factor(self):
-        return self.norm_factor
 
 # Multiple waves fit
 class n_waves:
     def __init__(self, new_pos_tot):
         self.new_pos_tot=new_pos_tot
-        self.L_waves = [0]
-        self.L_starts = [0]
+        self.L_waves = [wave_fit()]
         self.n = 1
+        self.overlap = 14
+        self.L_starts = [self.overlap]
 
     def fit(self, T):
-
-        t0=0
-        for t in range (14,T):
-            t_start = compute_start(self.new_pos_tot[0:t], window_size=7)
+        for t in range (self.overlap,T):
+            t_start = compute_start(self.new_pos_tot[0:t], window_size=7, start_0=self.overlap)
             t_start_new = t_start[-1]
 
+            if self.L_starts[-1] != t_start_new:
+                WF = wave_fit()
+                self.L_waves.append(WF)
+                self.L_starts.append(t_start_new)
+                self.n += 1
 
             if(self.n==1):
-                if self.L_starts[-1] != t_start_new:
-                    self.L_starts.append(t_start_new)
-                    self.n += 1
-
-                    
-                    WF = wave_fit(self.new_pos_tot[0,t])
-                    WF.fit(t,t+1)
-                    self.L_waves.append(WF)
-
-                else:
-                    WF = wave_fit(self.new_pos_tot[0,t])
-                    WF.fit(t,t+1)
-                    self.L_waves[self.n-1] = WF
-            
+                self.L_waves[-1].fit(self.new_pos_tot[0:t])
             else:
-                if self.L_starts[-1] != t_start_new:
-                    self.L_starts.append(t_start_new)
-                    self.n += 1
-                    
-                    new_pos_t = self.new_pos_tot[self.L_starts[-1]  , t]
+                new_pos_t = self.new_pos_tot[self.L_starts[-1] - self.overlap  : t]
+                tail_pos = self.L_waves[-1].predict(np.arange(self.L_starts[-1] - self.L_starts[-2], t - (self.L_starts[-2] - self.overlap)))
+                self.L_waves[-1].fit(new_pos_t-tail_pos)
 
-                    last_params = self.L_waves[-1].param_list[-1]
+    def single_predict(self, wave_index, tt):
+        """This return a single wave contribution in a given interval expressed as global time"""
+        if wave_index >= self.n:
+            print('Invalid wave index')
+            raise
+        wave = self.L_waves[wave_index]
+        tt_local = tt - (self.L_starts[wave_index] - self.overlap)
+        return wave.predict(tt_local)
 
-                    fit = self.L_waves[-1].norm_factor*gompertz(np.arange(0, self.L_starts[-1] - self.L_starts[-2]), params['K'].value, params['b'].value, params['c'].value)
-                    forecast = fit[today+1]
-                    diff_pos = new_pos_t - make_forecast(new_pos_t,self.L_waves[-1].param_list[-1], t )
+    def predict(self, tt):
+        """This return the current prediction considering all waves contributions"""
+        sum = np.zeros(tt.shape)
+        for i in range(self.n):
+            sum += self.single_predict(i, tt)
+        return sum
 
-
-                    WF = wave_fit(self.new_pos_tot[self.L_starts[-1],t] - )
-                    WF.fit(t,t+1)
-                    self.L_waves.append(WF)
-
-                else:
-                    WF = wave_fit(self.new_pos_tot[self.L_starts[-1]-14,t])
-                    WF.fit(t,t+1)
-                    self.L_waves[self.n-1] = WF
-
-
-            forecast_list+=WF.forecast_list[0]
-            corrected_forecast_list = WF.corrected_forecast_list
+    # forecast_list+=WF.forecast_list[0]
+    # corrected_forecast_list += WF.corrected_forecast_list[0]
