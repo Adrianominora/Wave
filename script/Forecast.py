@@ -148,7 +148,6 @@ class n_waves:
         self.n = 1
         self.overlap = 14
         self.L_starts = [self.overlap]
-        self.L_ends = [50]
         self.window = window
         self.t=self.overlap - 1
         self.rt = 0
@@ -163,12 +162,6 @@ class n_waves:
             new_pos_fit[i] = np.polyval(coefficients, t)
         rt_fit = compute_rt(self.predict(tt))
         self.rt = compute_rt(new_pos_fit, window_size=poly_w) -rt_fit
-
-        # if rt>0.04 and self.t>self.L_ends[-1] and self.t>self.L_starts[-1]+40 and len(self.L_ends)==len(self.L_starts):
-        #     self.L_starts.append(self.t)
-        #     flag = True
-        # if rt<-0.025 and self.t>self.L_starts[-1]+20 and self.t>self.L_ends[-1]+40 and len(self.L_ends)==len(self.L_starts)-1:
-        #     self.L_ends.append(self.t)
         if self.rt>0.04 and self.t>self.L_starts[-1]+40 :
             self.L_starts.append(self.t)
             flag = True
@@ -217,41 +210,3 @@ class n_waves:
         for i in range(n):
             sum += self.single_predict(i, tt)
         return sum
-        # sum = np.zeros(tt.shape)
-        # for j in range(tt.shape[0]):
-        #     t = tt[j]
-        #     last_wave_index=0
-        #     while self.L_starts[last_wave_index]<t:
-        #         last_wave_index+=1
-        #     last_wave_index-=1
-        #     if last_wave_index==-1:
-        #         last_wave_index=0
-
-        #     for i in range(last_wave_index):
-        #         sum[j] += self.single_predict(i, tt)
-        # return sum
-
-
-
-
-    # def fit_and_predict(self, T, tt):
-    #     jj = 0
-    #     for t in range (self.overlap,T):
-    #         tt_prediction = tt+t
-    #         t_start = compute_start(self.new_pos_tot[0:t], window_size=7, start_0=self.overlap)
-    #         t_start_new = t_start[-1]
-
-    #         if self.L_starts[-1] != t_start_new:
-    #             WF = wave_fit()
-    #             self.L_waves.append(WF)
-    #             self.L_starts.append(t_start_new)
-    #             self.n += 1
-
-    #         if(self.n==1):
-    #             self.L_waves[-1].fit(self.new_pos_tot[0:t], window=self.window)
-    #         else:
-    #             new_pos_t = self.new_pos_tot[self.L_starts[-1] - self.overlap  : t]
-    #             tail_pos = self.L_waves[-1].predict(np.arange(self.L_starts[-1] - self.L_starts[-2], t - (self.L_starts[-2] - self.overlap)))
-    #             self.L_waves[-1].fit(new_pos_t-tail_pos, window=self.window)
-    #         prediction[jj] = self.predict(tt_prediction)
-    #         jj+=1
